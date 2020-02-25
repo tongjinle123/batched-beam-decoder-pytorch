@@ -55,7 +55,7 @@ class BeamSteper:
         self.continue_mask = t.ones((self.batch_size, self.beam_size), dtype=t.bool, device=self.device)
 
     def get_first_step_token(self):
-        return self.token_container.view(-1, 1)
+        return self.token_container[:, 0, :].view(-1, 1)
     
     def first_step(self, step_prob):
         # step_prob [batch_size, vocab_size]
