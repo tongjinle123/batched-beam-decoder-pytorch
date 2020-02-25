@@ -15,7 +15,7 @@ class BestSaver:
 
 class BatchBestSaver:
     def __init__(self, best_k, batch_size, lp_eps=0.0, lp_lambda=5):
-        self.batch = [BestSaver(best_k)] * batch_size
+        self.batch = [BestSaver(best_k) for i in range(batch_size)]
         self.batch_low_socre = [-1e30] * batch_size
         self.lp_eps = lp_eps
         self.lp_lambda = lp_lambda
@@ -29,6 +29,7 @@ class BatchBestSaver:
                 lp = (self.lp_lambda + b_length) / (self.lp_lambda + 1) ** self.lp_eps
                 normalized_score = b_score[-1] / lp
                 self.batch[batch_index].add(b_token, normalized_score)
+
 
 
 class BeamSteper:
@@ -55,7 +56,7 @@ class BeamSteper:
 
     def get_first_step_token(self):
         return self.token_container.view(-1, 1)
-
+    
     def first_step(self, step_prob):
         # step_prob [batch_size, vocab_size]
         step_prob, step_prob_indice = t.topk(step_prob, self.beam_size)
@@ -69,7 +70,7 @@ class BeamSteper:
         tmp_prob_container = t.sum(tmp_prob_container[:, :, -2:], dim=-1, keepdim=True)
         # [batch_size, beam_size, 1]
         self.prob_container = t.cat([self.prob_container, tmp_prob_container], -1)
-
+        
         self.continue_mask.masked_fill_(
             self.token_container[:, :, -1].eq(self.eos_id),
             False)
@@ -80,6 +81,7 @@ class BeamSteper:
         else:
             print(self.continue_mask.sum())
             return True
+
 
     def step(self, step_prob):
         # step_prob [batch_size, beam_size, vocab_size]
@@ -93,7 +95,6 @@ class BeamSteper:
         self.token_container = t.cat([self.token_container, step_prob_indice.unsqueeze(-1)], dim=-1)
         # [batch_size, beam_size, beam_size, new_sequlenth]
         #         return self.prob_container
-        print(self.token_container)
         tmp_prob_container = self.prob_container.unsqueeze(-2).repeat(1, 1, self.beam_size, 1)
         # [batch_size, beam_size, beam_size, seqlength]
         tmp_prob_container = t.cat([tmp_prob_container, step_prob.unsqueeze(-1)], dim=-1)
@@ -108,7 +109,6 @@ class BeamSteper:
         self.token_container = self.token_container.view(self.batch_size, self.beam_size * self.beam_size, -1)
         self.token_container = [t.index_select(i, 0, v) for i, v in zip(self.token_container, index)]
         self.token_container = t.stack(self.token_container, 0)
-        print(self.token_container)
         # [batch_size, beam_size, seqlength]
         self.continue_mask.masked_fill_(
             self.token_container[:, :, -1].eq(self.eos_id),
